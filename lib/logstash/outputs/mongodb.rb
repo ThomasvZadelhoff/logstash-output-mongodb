@@ -137,11 +137,11 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   end
 
   def validate_action(action, filter, update_expressions)
-    if action != "insert" && action != "update" && action != "replace"
-      raise LogStash::ConfigurationError, "Only insert, update and replace are supported Mongo actions, got '#{action}'."
+    if action != "insert" && action != "update" && action != "replace" && action != "delete"
+      raise LogStash::ConfigurationError, "Only insert, update, replace and delete are supported Mongo actions, got '#{action}'."
     end
-    if (action == "update" || action == "replace") && (filter.nil? || filter.empty?)
-      raise LogStash::ConfigurationError, "If action is update or replace, filter must be set."
+    if (action == "update" || action == "replace" || action == "delete") && (filter.nil? || filter.empty?)
+      raise LogStash::ConfigurationError, "If action is update, replace or delete, filter must be set."
     end
     if action != "update" && !(update_expressions.nil? || update_expressions.empty?)
       raise LogStash::ConfigurationError, "The :update_expressions only makes sense if the action is an update."
@@ -175,7 +175,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       end
 
       collection = event.sprintf(@collection)
-      if action == "update" or action == "replace"
+      if action == "update" or action == "replace" or action == "delete"
         document["metadata_mongodb_output_filter"] = apply_event_to_hash(event, @filter)
       end
 
@@ -266,6 +266,8 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         ops << {:update_one => {:filter => filter, :update => update, :upsert => @upsert}}
       elsif action == "replace"
         ops << {:replace_one => {:filter => filter, :replacement => doc, :upsert => @upsert}}
+      elsif action == "delete"
+        ops << {:delete_one => {:filter => filter}}
       end
     end
     ops
